@@ -21,6 +21,7 @@ var Target = function() {
   $instance.skin = 'terrorist';
   $instance.id;
   $instance.size = { height: 200, width: 100 }
+  $instance.gameInstance;
   
   this.setPosition = function(x,y){
     $instance.position.x = x;
@@ -31,6 +32,12 @@ var Target = function() {
       left : x + 'px'
     });
   }
+
+  this.die = function(){
+    $instance.selector.addClass('dead');
+  }
+
+  this.rise = function(){}
   
 }
 
@@ -42,7 +49,16 @@ var Game = function()
   $instance.started = false;
   $instance.ended = false;
   $instance.targets = Array();
-  
+
+  this.bindMouseEvents = function(){
+    $instance.canvas.on('click', function(event){
+      if( $instance.started == true && $instance.ended == false ){
+        $instance.shot(event);
+      } 
+    });
+  }
+
+  // Ações primárias
 
 	this.init = function(){
   	$instance.bindMouseEvents();
@@ -55,7 +71,7 @@ var Game = function()
     $instance.targets = Array();
     $instance.targets.count = 0
     $instance.updateTimeout = setInterval( $instance.update , 1000);
-    $instance.createTarget();
+    $instance.respawn();
     
   }
 
@@ -63,12 +79,12 @@ var Game = function()
 		$instance.canvas.find('.target').remove();
   }
 
-	this.update = function(){
-    
-	}
-    
+	this.update = function(){}
+  
+  // Ações segundárias
   this.shot = function(event){
     $instance.player.shots++;
+    $instance.playSoundEffect('shot');
     
     if( $(event.target).hasClass('target') ) {
       $instance.onKill( $(event.target) );
@@ -77,24 +93,12 @@ var Game = function()
     }
     
   }
-  
-  this.onKill = function($target) {
-    $target.addClass('dead');
-    delete $instance.targets[$target.data('target-id')];
-    setTimeout( function(){ $target.remove() }, 500 );
-    
-    $instance.player.kills++;
-    $instance.targets.length--;
-    $instance.createTarget();
-  }
-  
-  this.onMiss = function(){
-    
-  }
-  
-  this.createTarget = function() {
-    target_id =  $instance.targets.count;
+
+  this.respawn = function() {
+    target_id =  $instance.targets.length;
+
     target = new Target();
+    target.gameInstance = $instance;
     target.skin = 'terrorist';
     target.id = target_id;
     target.selector = $('<i class="target '+ target.skin +'" data-target-id="'+target.id+'" draggable="false"></i>');
@@ -105,15 +109,29 @@ var Game = function()
     
     $instance.canvas.append( target.selector );
     $instance.targets.push(target);
-    $instance.targets.count++;
   }
+
+  // Eventos
+  this.onKill = function($target) {
+    $instance.playSoundEffect('death');
+    $instance.targets[ $(event.target).data('target-id') ].die();
+    $instance.player.kills++;
+
+    delete $instance.targets[ $target.data('target-id') ];
     
-  this.bindMouseEvents = function(){
-    $instance.canvas.on('click', function(event){
-      if( $instance.started == true && $instance.ended == false ){
-        $instance.shot(event);
-      } 
-    });
+    $instance.respawn();
+  }
+  
+  this.onMiss = function(){}
+
+
+  // Efeitos
+  this.playSoundEffect = function(type)
+  {
+    sound = document.getElementById(type);
+    sound.pause();
+    sound.currentTime = 0;
+    sound.play();
   }
 
 }
