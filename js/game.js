@@ -22,7 +22,7 @@ var Target = function( id ) {
   $instance.skin = 'terrorist';
   $instance.size = { height: 200, width: 100 }
   $instance.gameInstance;
-  $instance.status = 'alive';
+  $instance.status = 'alive'; // alive, dying, dead, respawn
   
   this.setPosition = function(x,y){
     $instance.position.x = x;
@@ -35,6 +35,7 @@ var Target = function( id ) {
   }
 
   this.die = function(){
+		$instance.status = 'dead';
 		// Animação morte
     $instance.selector.animate({ marginLeft: -25 }, 10)
 		.animate({ marginLeft: 0 }, 50)
@@ -45,7 +46,6 @@ var Target = function( id ) {
 			});
 		});
 		
-    $instance.status = 'dead';
   }
 
   this.rise = function(){
@@ -66,13 +66,12 @@ var Game = function()
 	var $instance = this;
   $instance.canvas = $('#canvas');
   $instance.player = new Player();
-  $instance.started = false;
-  $instance.ended = false;
   $instance.targets = Array();
+	$instance.status = 'stoped';
 
   this.bindMouseEvents = function(){
     $instance.canvas.on('click', function(event){
-      if( $instance.started == true && $instance.ended == false ){
+      if( $instance.status == 'running' ){
         $instance.shot(event);
       } 
     });
@@ -86,21 +85,38 @@ var Game = function()
   }
 
 	this.start = function(){
-  	$instance.started = true;
+  	$instance.status = 'running';
     $instance.player.shots = 0;
     $instance.player.kills = 0;
     $instance.targets = Array();
-    $instance.targets.count = 0
     $instance.updateTimeout = setInterval( $instance.update , 1000);
     $instance.respawn();
-    
   }
 
 	this.stop = function(){
+		$instance.status = 'stoped';
 		$instance.canvas.find('.target').remove();
+		clearInterval($instance.updateTimeout);
   }
 
-	this.update = function(){}
+	this.update = function(){
+		
+		// Atualiza os targets
+		$.each( $instance.targets, function( index, target ) {
+			if( target != undefined ){
+				if( target.status == "dying" ){
+						$instance.targets[ target.id ].die();
+    				delete $instance.targets[ target.id ];
+				}
+			}
+		});
+		
+//		// Respawn a cada 1 segundo
+//		if( Date.now() - $instance.respawnTime > 1000 ){
+//			$instance.respawn();
+//		}
+		
+	}
   
   // Ações segundárias
   this.shot = function(event){
@@ -119,20 +135,18 @@ var Game = function()
     target = new Target( $instance.targets.length );
     target.gameInstance = $instance;
     target.skin = 'terrorist';
-   
     target.rise();
-   
+   	
+		$instance.respawnTime = Date.now();
     $instance.targets.push(target);
   }
 
   // Eventos
   this.whenHit = function($target) {
-    $instance.playSoundEffect('death');
-    $instance.targets[ $(event.target).data('target-id') ].die();
+  	$instance.playSoundEffect('death');
     $instance.player.kills++;
-
-    delete $instance.targets[ $target.data('target-id') ];
-    
+		$instance.targets[ $(event.target).data('target-id') ].status = 'dying';
+		
     $instance.respawn();
   }
   
