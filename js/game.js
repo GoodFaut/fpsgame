@@ -1,12 +1,3 @@
-jQuery.fn.shake = function() {
-    this.each(function(i) {
-        for (var x = 1; x <= 3; x++) {
-            $(this).animate({ marginLeft: -25 }, 10).animate({ marginLeft: 0 }, 50).animate({ marginLeft: 25 }, 10).animate({ marginLeft: 0 }, 50);
-        }
-    });
-    return this;
-} 
-
 var Player = function()
 {
 	var name;
@@ -22,13 +13,13 @@ var Player = function()
 	}
 }
 
-var Target = function() {
+var Target = function( id ) {
   $instance = this;
   
+	$instance.id = id;
   $instance.selector;
   $instance.position = { x : null, y : null }
   $instance.skin = 'terrorist';
-  $instance.id;
   $instance.size = { height: 200, width: 100 }
   $instance.gameInstance;
   $instance.status = 'alive';
@@ -44,16 +35,26 @@ var Target = function() {
   }
 
   this.die = function(){
-    $instance.selector.shake().stop().animate({
-        opacity: 0,
-        bottom: "+=50",
-      }, 1000, function() {
-        // Animation complete.
-      });
+		// Animação morte
+    $instance.selector.animate({ marginLeft: -25 }, 10)
+		.animate({ marginLeft: 0 }, 50)
+		.animate({ marginLeft: 25 }, 10)
+		.animate({ marginLeft: 0 }, 50, function(){
+			$(this).stop().fadeOut('slow', function(){
+				$(this).remove();
+			});
+		});
+		
     $instance.status = 'dead';
   }
 
   this.rise = function(){
+	 	$instance.selector = $('<i class="target '+ $instance.skin +'" data-target-id="'+$instance.id+'" draggable="false"></i>');
+    
+		posicao_x = Math.floor((Math.random() * ($instance.gameInstance.canvas.width() - $instance.size.width)  ) + 1);
+    posicao_y = Math.floor((Math.random() * ($instance.gameInstance.canvas.height() - $instance.size.height)  ) + 1);
+    $instance.setPosition(posicao_x, posicao_y);
+		
     $instance.gameInstance.canvas.append( $instance.selector );
     $instance.selector.addClass('rise');
   }
@@ -81,6 +82,7 @@ var Game = function()
 
 	this.init = function(){
   	$instance.bindMouseEvents();
+		$instance.loadSounds();
   }
 
 	this.start = function(){
@@ -114,14 +116,10 @@ var Game = function()
   }
 
   this.respawn = function() {
-    target = new Target();
+    target = new Target( $instance.targets.length );
     target.gameInstance = $instance;
-    target.id = $instance.targets.length;
     target.skin = 'terrorist';
-    target.selector = $('<i class="target '+ target.skin +'" data-target-id="'+target.id+'" draggable="false"></i>');
-    posicao_x = Math.floor((Math.random() * ($instance.canvas.width() - target.size.width)  ) + 1);
-    posicao_y = Math.floor((Math.random() * ($instance.canvas.height() - target.size.height)  ) + 1);
-    target.setPosition(posicao_x, posicao_y);
+   
     target.rise();
    
     $instance.targets.push(target);
@@ -142,12 +140,16 @@ var Game = function()
 
 
   // Efeitos
-  this.playSoundEffect = function(type)
-  {
+  this.playSoundEffect = function(type) {
     sound = document.getElementById(type);
     sound.pause();
     sound.currentTime = 0;
     sound.play();
   }
+	
+	this.loadSounds = function() {
+		$instance.canvas.append('<audio controls id="shot" preload="auto"><source src="sounds/shot.mp3" type="audio/mpeg"></audio>');
+		$instance.canvas.append('<audio controls id="death" preload="auto"><source src="sounds/death.mp3" type="audio/mpeg"></audio>');
+	}
 
 }
