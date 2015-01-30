@@ -30,11 +30,19 @@ audio {
     display: block;
     top: 0;
     left: 0;
+    opacity: 0;
+    margin-bottom: -30px;
 }
 
 .target.terrorist {  background-image: url(../img/target-terrorist.png); }
 .target.terrorist.dead {  background-image: url(../img/target-terrorist-dead.png);  }
 
+
+.target.rise {
+  opacity: 1;
+  margin-bottom: 0;
+  transition: opacity 0.3s linear;
+}
 
 .target.dead {
   transition: opacity 0.5s linear;

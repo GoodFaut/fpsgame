@@ -1,3 +1,12 @@
+jQuery.fn.shake = function() {
+    this.each(function(i) {
+        for (var x = 1; x <= 3; x++) {
+            $(this).animate({ marginLeft: -25 }, 10).animate({ marginLeft: 0 }, 50).animate({ marginLeft: 25 }, 10).animate({ marginLeft: 0 }, 50);
+        }
+    });
+    return this;
+} 
+
 var Player = function()
 {
 	var name;
@@ -22,6 +31,7 @@ var Target = function() {
   $instance.id;
   $instance.size = { height: 200, width: 100 }
   $instance.gameInstance;
+  $instance.status = 'alive';
   
   this.setPosition = function(x,y){
     $instance.position.x = x;
@@ -34,10 +44,19 @@ var Target = function() {
   }
 
   this.die = function(){
-    $instance.selector.addClass('dead');
+    $instance.selector.shake().stop().animate({
+        opacity: 0,
+        bottom: "+=50",
+      }, 1000, function() {
+        // Animation complete.
+      });
+    $instance.status = 'dead';
   }
 
-  this.rise = function(){}
+  this.rise = function(){
+    $instance.gameInstance.canvas.append( $instance.selector );
+    $instance.selector.addClass('rise');
+  }
   
 }
 
@@ -87,7 +106,7 @@ var Game = function()
     $instance.playSoundEffect('shot');
     
     if( $(event.target).hasClass('target') ) {
-      $instance.onKill( $(event.target) );
+      $instance.whenHit( $(event.target) );
     }else{
       $instance.onMiss();
     }
@@ -95,24 +114,21 @@ var Game = function()
   }
 
   this.respawn = function() {
-    target_id =  $instance.targets.length;
-
     target = new Target();
     target.gameInstance = $instance;
+    target.id = $instance.targets.length;
     target.skin = 'terrorist';
-    target.id = target_id;
     target.selector = $('<i class="target '+ target.skin +'" data-target-id="'+target.id+'" draggable="false"></i>');
-    
     posicao_x = Math.floor((Math.random() * ($instance.canvas.width() - target.size.width)  ) + 1);
     posicao_y = Math.floor((Math.random() * ($instance.canvas.height() - target.size.height)  ) + 1);
     target.setPosition(posicao_x, posicao_y);
-    
-    $instance.canvas.append( target.selector );
+    target.rise();
+   
     $instance.targets.push(target);
   }
 
   // Eventos
-  this.onKill = function($target) {
+  this.whenHit = function($target) {
     $instance.playSoundEffect('death');
     $instance.targets[ $(event.target).data('target-id') ].die();
     $instance.player.kills++;
