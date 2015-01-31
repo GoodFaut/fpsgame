@@ -13,31 +13,46 @@ var Player = function()
 	}
 }
 
+
+
+
+
+
 var Target = function( id ) {
   $instance = this;
   
-	$instance.id = id;
-  $instance.selector;
-  $instance.position = { x : null, y : null }
-  $instance.skin = 'terrorist';
-  $instance.size = { height: 200, width: 100 }
-  $instance.gameInstance;
-  $instance.status = 'alive'; // alive, dying, dead, respawn
+	this.id = id;
+  this.selector;
+  this.position = { x : null, y : null }
+  this.skin = 'terrorist';
+  this.size = { width: 0, height: 0 };
+  this.gameInstance;
+  this.status = 'borning'; // alive, dying, dead, respawn
+  this.selector = $('<i class="target '+ this.skin +'" data-target-id="'+ this.id+'" draggable="false"></i>');
   
   this.setPosition = function(x,y){
-    $instance.position.x = x;
-    $instance.position.y = y;
+    this.position.x = x;
+    this.position.y = y;
     
-    $instance.selector.css({
+    this.selector.css({
       top : y + 'px',
       left : x + 'px'
     });
   }
+  
+  this.setSize = function(width, height) {
+    this.size.width = width;
+    this.size.height = height;
+    
+    this.selector.css({
+      'width': width,
+      'height': height
+    });
+  }
 
   this.die = function(){
-		$instance.status = 'dead';
 		// Animação morte
-    $instance.selector.animate({ marginLeft: -25 }, 10)
+    this.selector.animate({ marginLeft: -25 }, 10)
 		.animate({ marginLeft: 0 }, 50)
 		.animate({ marginLeft: 25 }, 10)
 		.animate({ marginLeft: 0 }, 50, function(){
@@ -45,113 +60,139 @@ var Target = function( id ) {
 				$(this).remove();
 			});
 		});
-		
+    
+     this.status = 'dead';
   }
 
   this.rise = function(){
-	 	$instance.selector = $('<i class="target '+ $instance.skin +'" data-target-id="'+$instance.id+'" draggable="false"></i>');
     
-		posicao_x = Math.floor((Math.random() * ($instance.gameInstance.canvas.width() - $instance.size.width)  ) + 1);
-    posicao_y = Math.floor((Math.random() * ($instance.gameInstance.canvas.height() - $instance.size.height)  ) + 1);
-    $instance.setPosition(posicao_x, posicao_y);
-		
-    $instance.gameInstance.canvas.append( $instance.selector );
-    $instance.selector.addClass('rise');
+    this.gameInstance.canvas.append( this.selector );
+    
+    this.selector.animate({
+      opacity: 1,
+      marginTop: 0
+    }, 1000);
+    
+    this.status = 'alive';
   }
   
 }
 
+
+
+
 var Game = function()
 {
 	var $instance = this;
-  $instance.canvas = $('#canvas');
-  $instance.player = new Player();
-  $instance.targets = Array();
-	$instance.status = 'stoped';
+  
+  this.canvas = $('#canvas');
+  this.player = new Player();
+  this.targets = Array();
+	this.status = 'stoped';
+  this.respawnTime = 1;
+  this.lastRespawnTime;
+  this.difficulty = 'easy'; // easy, medium, hard 
 
   this.bindMouseEvents = function(){
     $instance.canvas.on('click', function(event){
       if( $instance.status == 'running' ){
-        $instance.shot(event);
+        $instance.onShot(event);
       } 
     });
   }
 
   // Ações primárias
-
 	this.init = function(){
-  	$instance.bindMouseEvents();
-		$instance.loadSounds();
+  	this.bindMouseEvents();
+		this.loadSounds();
   }
 
-	this.start = function(){
-  	$instance.status = 'running';
-    $instance.player.shots = 0;
-    $instance.player.kills = 0;
-    $instance.targets = Array();
-    $instance.updateTimeout = setInterval( $instance.update , 1000);
-    $instance.respawn();
+	this.startGame = function(){
+  	this.status = 'running';
+    this.player.shots = 0;
+    this.player.kills = 0;
+    this.targets = Array();
+    this.lastRespawnTime = Date.now();
+    this.playGame();
   }
 
-	this.stop = function(){
-		$instance.status = 'stoped';
-		$instance.canvas.find('.target').remove();
-		clearInterval($instance.updateTimeout);
+	this.stopGame = function(){
+		this.status = 'stoped';
+		this.canvas.find('.target').remove();
+		clearInterval(this.updateTimeout);
   }
-
+  
+  this.pauseGame = function(){ clearInterval(this.updateTimeout); }
+  
+  this.playGame = function(){ 
+    this.updateTimeout = setInterval( this.update , (1000 / 45)); 
+  }
+  
+  // Atualizacao do cenario
 	this.update = function(){
-		
+    
 		// Atualiza os targets
-		$.each( $instance.targets, function( index, target ) {
-			if( target != undefined ){
+		for(index=0;index<$instance.targets.length;index++){
+      target = ( $instance.targets[index] )? $instance.targets[index] : false;
+			if( target ){
 				if( target.status == "dying" ){
-						$instance.targets[ target.id ].die();
-    				delete $instance.targets[ target.id ];
+						target.die();
 				}
+        if( target.status == 'dead' ){
+            delete $instance.targets[ index ];
+        }
 			}
-		});
+		}
 		
-//		// Respawn a cada 1 segundo
-//		if( Date.now() - $instance.respawnTime > 1000 ){
-//			$instance.respawn();
-//		}
+		// Respawn a cada 1 segundo
+		if( Date.now() - $instance.lastRespawnTime > (1000 * $instance.respawnTime) ){
+			$instance.respawn();
+		}
 		
 	}
   
   // Ações segundárias
-  this.shot = function(event){
-    $instance.player.shots++;
-    $instance.playSoundEffect('shot');
-    
-    if( $(event.target).hasClass('target') ) {
-      $instance.whenHit( $(event.target) );
-    }else{
-      $instance.onMiss();
-    }
-    
-  }
-
   this.respawn = function() {
-    target = new Target( $instance.targets.length );
-    target.gameInstance = $instance;
-    target.skin = 'terrorist';
+    target = new Target( this.targets.length );
+    target.gameInstance = this;
+    
+    width = Math.random() * (200 - 50) + 50;
+    height = width * 2;
+    target.setSize(width, height);
+    
+		posicao_x = Math.floor((Math.random() * (this.canvas.width() - target.size.width)  ) + 1);
+    posicao_y = Math.floor((Math.random() * (this.canvas.height() - target.size.height)  ) + 1);
+    target.setPosition(posicao_x, posicao_y);
+		
     target.rise();
    	
-		$instance.respawnTime = Date.now();
-    $instance.targets.push(target);
+		this.lastRespawnTime = Date.now();
+    this.targets.push(target);
   }
 
   // Eventos
   this.whenHit = function($target) {
-  	$instance.playSoundEffect('death');
-    $instance.player.kills++;
-		$instance.targets[ $(event.target).data('target-id') ].status = 'dying';
-		
-    $instance.respawn();
+  	this.playSoundEffect('death');
+    this.player.kills++;
+    
+    target = this.targets[ $(event.target).data('target-id') ];
+    if( target.status == 'alive' ){
+		  target.status = 'dying';
+    }
   }
   
   this.onMiss = function(){}
 
+  this.onShot = function(event){
+    this.player.shots++;
+    this.playSoundEffect('shot');
+    
+    if( $(event.target).hasClass('target') ) {
+      this.whenHit( $(event.target) );
+    }else{
+      this.onMiss();
+    }
+  }
 
   // Efeitos
   this.playSoundEffect = function(type) {
@@ -162,8 +203,8 @@ var Game = function()
   }
 	
 	this.loadSounds = function() {
-		$instance.canvas.append('<audio controls id="shot" preload="auto"><source src="sounds/shot.mp3" type="audio/mpeg"></audio>');
-		$instance.canvas.append('<audio controls id="death" preload="auto"><source src="sounds/death.mp3" type="audio/mpeg"></audio>');
+		this.canvas.append('<audio controls id="shot" preload="auto"><source src="sounds/shot.mp3" type="audio/mpeg"></audio>');
+		this.canvas.append('<audio controls id="death" preload="auto"><source src="sounds/death.mp3" type="audio/mpeg"></audio>');
 	}
 
 }
