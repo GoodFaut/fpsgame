@@ -19,6 +19,17 @@ audio {
   height: 100%;
 }
 
+.score {
+  position: absolute;
+  right: 15px;
+  bottom: 15px;
+  background: #000;
+  color: #fff;
+  font-size: 20px;
+  text-align: center;
+  padding: 10px 15px;
+  font-family: Arial;
+}
 
 .target {
     width: 100px;

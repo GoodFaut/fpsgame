@@ -1,8 +1,9 @@
 var Player = function()
 {
-	var name;
-  var shots = 0;
-  var kills = 0;
+	this.name;
+  this.shots = 0;
+  this.kills = 0;
+  this.score = 0;
 
 	this.setName = function(name) {
 		this.name = name;
@@ -62,6 +63,7 @@ var Target = function( id ) {
 		});
     
      this.status = 'dead';
+     console.log(this.gameInstance.player.score);
   }
 
   this.rise = function(){
@@ -104,6 +106,7 @@ var Game = function()
   // Ações primárias
 	this.init = function(){
   	this.bindMouseEvents();
+    this.createScenario();
 		this.loadSounds();
   }
 
@@ -136,6 +139,7 @@ var Game = function()
       target = ( $instance.targets[index] )? $instance.targets[index] : false;
 			if( target ){
 				if( target.status == "dying" ){
+            $instance.player.score += (10000/target.size.width);
 						target.die();
 				}
         if( target.status == 'dead' ){
@@ -143,7 +147,10 @@ var Game = function()
         }
 			}
 		}
-		
+    
+    // Update Score
+    $instance.canvas.find('.score').html( Math.round(  $instance.player.score  )  );
+    
 		// Respawn a cada 1 segundo
 		if( Date.now() - $instance.lastRespawnTime > (1000 * $instance.respawnTime) ){
 			$instance.respawn();
@@ -169,14 +176,14 @@ var Game = function()
 		this.lastRespawnTime = Date.now();
     this.targets.push(target);
   }
-
+  
   // Eventos
   this.whenHit = function($target) {
   	this.playSoundEffect('death');
     this.player.kills++;
     
     target = this.targets[ $(event.target).data('target-id') ];
-    if( target.status == 'alive' ){
+    if( target.status && target.status == 'alive' ){
 		  target.status = 'dying';
     }
   }
@@ -206,5 +213,9 @@ var Game = function()
 		this.canvas.append('<audio controls id="shot" preload="auto"><source src="sounds/shot.mp3" type="audio/mpeg"></audio>');
 		this.canvas.append('<audio controls id="death" preload="auto"><source src="sounds/death.mp3" type="audio/mpeg"></audio>');
 	}
+  
+  this.createScenario = function(){
+    this.canvas.append('<div class="score"></div>');
+  }
 
 }
